@@ -1,6 +1,6 @@
 {
-    "name": "rawfitnessapp",
-    "short_name": "rawfitnessapp",
+    "name": "Raw Fitness",
+    "short_name": "Raw Fitness",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

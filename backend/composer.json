@@ -1,0 +1,12 @@
+{
+  "name": "rawfitness/api",
+  "description": "Raw Fitness PHP REST API",
+  "require": {
+    "php": ">=8.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  }
+}
