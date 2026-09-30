@@ -76,4 +76,44 @@ final class Validator
         }
         return $v;
     }
+
+    public static function money(mixed $value, string $label = 'Amount'): float
+    {
+        if (!is_numeric($value)) {
+            Json::fail("Enter a valid {$label}", 422);
+        }
+        $amount = round((float) $value, 2);
+        if ($amount < 0 || $amount > 10000000) {
+            Json::fail("Enter a valid {$label}", 422);
+        }
+        return $amount;
+    }
+
+    public static function date(mixed $value, string $label = 'Date'): string
+    {
+        $v = trim((string) $value);
+        $dt = \DateTimeImmutable::createFromFormat('Y-m-d', $v);
+        if (!$dt || $dt->format('Y-m-d') !== $v) {
+            Json::fail("Enter a valid {$label} (YYYY-MM-DD)", 422);
+        }
+        return $v;
+    }
+
+    public static function intId(mixed $value, string $label = 'ID'): int
+    {
+        $id = (int) $value;
+        if ($id < 1) {
+            Json::fail("Select a valid {$label}", 422);
+        }
+        return $id;
+    }
+
+    public static function paymentMode(mixed $value): string
+    {
+        $v = strtolower(trim((string) $value));
+        if (!in_array($v, ['cash', 'upi', 'card', 'online'], true)) {
+            Json::fail('Select a valid payment mode', 422);
+        }
+        return $v;
+    }
 }

@@ -1,11 +1,17 @@
 import 'package:go_router/go_router.dart';
 
+import '../../models/package.dart';
 import '../../providers/auth_provider.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/onboarding_screen.dart';
 import '../../screens/auth/otp_screen.dart';
-import '../../screens/home/home_placeholder_screen.dart';
-import '../../screens/membership/membership_placeholder_screen.dart';
+import '../../screens/home/home_screen.dart';
+import '../../screens/membership/membership_plans_screen.dart';
+import '../../screens/membership/membership_screen.dart';
+import '../../screens/membership/payment_history_screen.dart';
+import '../../screens/membership/payment_method_screen.dart';
+import '../../screens/membership/plan_summary_screen.dart';
+import '../../screens/membership/receipt_screen.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/shell/main_shell.dart';
 import '../../screens/splash/splash_screen.dart';
@@ -56,6 +62,32 @@ GoRouter createRouter(AuthProvider auth) {
         path: '/onboarding',
         builder: (_, _) => const OnboardingScreen(),
       ),
+      GoRoute(
+        path: '/membership/plans',
+        builder: (_, _) => const MembershipPlansScreen(),
+      ),
+      GoRoute(
+        path: '/membership/summary',
+        builder: (_, state) => PlanSummaryScreen(
+          package: state.extra is GymPackage ? state.extra as GymPackage : null,
+        ),
+      ),
+      GoRoute(
+        path: '/membership/payment',
+        builder: (_, state) => PaymentMethodScreen(
+          package: state.extra is GymPackage ? state.extra as GymPackage : null,
+        ),
+      ),
+      GoRoute(
+        path: '/membership/history',
+        builder: (_, _) => const PaymentHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/membership/receipt/:id',
+        builder: (_, state) => ReceiptScreen(
+          paymentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainShell(navigationShell: navigationShell);
@@ -65,7 +97,7 @@ GoRouter createRouter(AuthProvider auth) {
             routes: [
               GoRoute(
                 path: '/home',
-                builder: (_, _) => const HomePlaceholderScreen(),
+                builder: (_, _) => const HomeScreen(),
               ),
             ],
           ),
@@ -81,7 +113,7 @@ GoRouter createRouter(AuthProvider auth) {
             routes: [
               GoRoute(
                 path: '/membership',
-                builder: (_, _) => const MembershipPlaceholderScreen(),
+                builder: (_, _) => const MembershipScreen(),
               ),
             ],
           ),

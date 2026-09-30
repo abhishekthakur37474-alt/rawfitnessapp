@@ -39,4 +39,18 @@ final class GovIdRepository
             'image_url' => $baseUrl . $row['image_path'],
         ];
     }
+
+    public function setStatus(int $id, string $status, ?string $reason = null): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE user_gov_ids SET status = ?, reason = ? WHERE id = ?');
+        $stmt->execute([$status, $reason, $id]);
+    }
+
+    public function find(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM user_gov_ids WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
 }

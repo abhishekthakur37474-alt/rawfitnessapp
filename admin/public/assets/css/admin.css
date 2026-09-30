@@ -77,3 +77,77 @@ body {
   color: #0f172a;
   font-weight: 600;
 }
+
+.card-panel {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.table-dark {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--rf-text);
+  --bs-table-border-color: var(--rf-border);
+  --bs-table-hover-bg: #1c2430;
+  --bs-table-hover-color: var(--rf-text);
+}
+
+.form-select {
+  background-color: #1c2430;
+  border-color: var(--rf-border);
+  color: var(--rf-text);
+}
+
+.form-select:focus {
+  background-color: #1c2430;
+  color: var(--rf-text);
+  border-color: var(--rf-accent);
+}
+
+.form-check-input:checked {
+  background-color: var(--rf-accent);
+  border-color: var(--rf-accent);
+}
+
+.page-link {
+  background: var(--rf-surface);
+  border-color: var(--rf-border);
+  color: var(--rf-text);
+}
+
+.page-item.active .page-link {
+  background: var(--rf-accent);
+  border-color: var(--rf-accent);
+  color: #0f172a;
+}
+
+.gov-thumb {
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 12px;
+  border: 1px solid var(--rf-border);
+  margin-top: 0.5rem;
+}
+
+@media print {
+  .sidebar,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #111;
+  }
+
+  .card-panel,
+  .receipt {
+    border-color: #ccc;
+  }
+
+  .table-dark {
+    --bs-table-color: #111;
+    --bs-table-border-color: #ccc;
+  }
+}

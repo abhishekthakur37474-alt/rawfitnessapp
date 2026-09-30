@@ -6,6 +6,9 @@ $config = require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Controllers\AuthController;
 use App\Controllers\DeviceController;
+use App\Controllers\MembershipController;
+use App\Controllers\PackageController;
+use App\Controllers\PaymentController;
 use App\Controllers\ProfileController;
 use App\Middleware\JwtAuth;
 use App\Services\OtpService;
@@ -42,7 +45,7 @@ try {
 if ($method === 'GET' && $path === '/health') {
     Json::ok('Raw Fitness API ready', [
         'app' => $config['app_name'],
-        'phase' => 1,
+        'phase' => 2,
         'time' => date('c'),
     ]);
 }
@@ -83,6 +86,33 @@ if ($method === 'POST' && $path === '/profile/gov-id') {
 }
 if ($method === 'POST' && $path === '/device/onesignal-subscription') {
     $device->saveOneSignal();
+}
+
+$packages = new PackageController($pdo);
+$membership = new MembershipController($pdo, $config, $userId);
+$payments = new PaymentController($pdo, $config, $userId);
+$params = [];
+
+if ($method === 'GET' && $path === '/packages') {
+    $packages->index();
+}
+if ($method === 'GET' && $path === '/membership/current') {
+    $membership->current();
+}
+if ($method === 'GET' && $path === '/membership/history') {
+    $membership->history();
+}
+if ($method === 'POST' && $path === '/membership/renew') {
+    $membership->renew();
+}
+if ($method === 'GET' && $path === '/payments/history') {
+    $payments->history();
+}
+if ($method === 'POST' && $path === '/payments/initiate') {
+    $payments->initiate();
+}
+if ($method === 'GET' && Http::match('/receipts/{id}', $path, $params)) {
+    $payments->receipt((int) $params['id']);
 }
 
 Json::fail('Not found', 404);

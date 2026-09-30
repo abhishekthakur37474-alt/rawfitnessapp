@@ -1,6 +1,8 @@
 <?php
 $isLogin = ($path ?? '') === '/login';
 $base = $base ?? '';
+$path = $path ?? '/';
+$flashes = $flashes ?? [];
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,9 +20,17 @@ $base = $base ?? '';
         <aside class="sidebar p-3">
             <div class="brand mb-4">RAW FITNESS</div>
             <nav class="nav flex-column gap-1">
-                <a class="nav-link active" href="<?= htmlspecialchars($base) ?>/">Dashboard</a>
-                <a class="nav-link disabled" href="#">Members</a>
-                <a class="nav-link disabled" href="#">Packages</a>
+                <?php
+                $navItems = [
+                    '/' => 'Dashboard',
+                    '/members' => 'Members',
+                    '/packages' => 'Packages',
+                ];
+                foreach ($navItems as $href => $label):
+                    $active = $href === '/' ? ($path === '/') : str_starts_with($path, $href);
+                ?>
+                    <a class="nav-link <?= $active ? 'active' : '' ?>" href="<?= htmlspecialchars($base . $href) ?>"><?= htmlspecialchars($label) ?></a>
+                <?php endforeach; ?>
                 <a class="nav-link disabled" href="#">Workouts</a>
                 <a class="nav-link disabled" href="#">Diet</a>
                 <a class="nav-link disabled" href="#">Branches</a>
@@ -30,6 +40,9 @@ $base = $base ?? '';
             </nav>
         </aside>
         <main class="flex-grow-1 p-4">
+            <?php foreach ($flashes as $flash): ?>
+                <div class="alert alert-<?= htmlspecialchars($flash['type']) ?>"><?= htmlspecialchars($flash['message']) ?></div>
+            <?php endforeach; ?>
             <?php require $view; ?>
         </main>
     </div>
