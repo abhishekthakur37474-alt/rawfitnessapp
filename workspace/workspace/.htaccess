@@ -1,0 +1,16 @@
+DirectoryIndex index.php
+RewriteEngine On
+RewriteBase /
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+RewriteRule ^api/uploads/(.*)$ backend/public/uploads/$1 [L]
+RewriteRule ^uploads/(.*)$ backend/public/uploads/$1 [L]
+RewriteRule ^admin/assets/(.*)$ admin/public/assets/$1 [L]
+
+RewriteRule ^admin(/.*)?$ admin/public/index.php [QSA,L]
+RewriteRule ^api(/.*)?$ backend/public/index.php [QSA,L]
+RewriteRule ^health$ backend/public/index.php [QSA,L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [QSA,L]
