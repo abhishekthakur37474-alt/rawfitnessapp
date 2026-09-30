@@ -25,14 +25,14 @@ $flashes = $flashes ?? [];
                     '/' => 'Dashboard',
                     '/members' => 'Members',
                     '/packages' => 'Packages',
+                    '/workout-plans' => 'Workout Plans',
+                    '/diet-plans' => 'Diet Plans',
                 ];
                 foreach ($navItems as $href => $label):
                     $active = $href === '/' ? ($path === '/') : str_starts_with($path, $href);
                 ?>
                     <a class="nav-link <?= $active ? 'active' : '' ?>" href="<?= htmlspecialchars($base . $href) ?>"><?= htmlspecialchars($label) ?></a>
                 <?php endforeach; ?>
-                <a class="nav-link disabled" href="#">Workouts</a>
-                <a class="nav-link disabled" href="#">Diet</a>
                 <a class="nav-link disabled" href="#">Branches</a>
                 <a class="nav-link disabled" href="#">Notifications</a>
                 <a class="nav-link disabled" href="#">Settings</a>

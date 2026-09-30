@@ -71,8 +71,7 @@ final class Admin
     }
 
     public static function badge(string $status): string
-    {
-        $map = [
+    {        $map = [
             'active' => 'success',
             'expiring' => 'warning',
             'expired' => 'danger',
@@ -90,6 +89,45 @@ final class Admin
         $class = $map[strtolower($status)] ?? 'secondary';
         $label = ucwords(str_replace('_', ' ', $status));
         return '<span class="badge text-bg-' . $class . '">' . htmlspecialchars($label) . '</span>';
+    }
+
+    public static function storeImage(array $file, string $subdir, array $config): ?string
+    {
+        $error = $file['error'] ?? UPLOAD_ERR_NO_FILE;
+        if ($error === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+        if ($error !== UPLOAD_ERR_OK || empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return null;
+        }
+        if (($file['size'] ?? 0) > (int) ($config['uploads']['max_bytes'] ?? 0)) {
+            return null;
+        }
+        $mime = null;
+        if (class_exists(\finfo::class)) {
+            $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) ?: null;
+        }
+        if ($mime === null) {
+            $ext = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+            $mime = match ($ext) {
+                'png' => 'image/png',
+                'jpg', 'jpeg' => 'image/jpeg',
+                default => '',
+            };
+        }
+        if (!in_array($mime, $config['uploads']['allowed_mime'] ?? [], true)) {
+            return null;
+        }
+        $extOut = $mime === 'image/png' ? 'png' : 'jpg';
+        $name = bin2hex(random_bytes(16)) . '.' . $extOut;
+        $dir = rtrim((string) $config['uploads']['dir'], '/') . '/' . $subdir;
+        if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+            return null;
+        }
+        if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $name)) {
+            return null;
+        }
+        return rtrim((string) $config['uploads']['public_path'], '/') . '/' . $subdir . '/' . $name;
     }
 
     public static function flash(string $type, string $message): void

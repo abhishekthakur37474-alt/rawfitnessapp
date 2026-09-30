@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final membership = context.read<MembershipProvider>();
     await membership.refreshCurrent();
     if (!mounted) return;
-    if (!membership.hasMembership && !membership.popupShown) {
+    if (!membership.hasActive && !membership.popupShown) {
       await _showGetMembershipSheet();
     }
   }

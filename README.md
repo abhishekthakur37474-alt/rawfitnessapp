@@ -55,3 +55,15 @@ Notification permission is requested after login, not on splash. After OTP verif
 - Profile: view/edit name, gender, height, member ID, gov ID status; logout clears session
 - `GET /api/health` returns phase 1
 - Admin login works with CSRF; dashboard shows member count
+
+## Phase 2 test checklist
+
+- `GET /api/health` returns phase 2
+- Home with no active membership shows a dismissible "Get Membership" bottom sheet (close button + tap outside); dismissing leaves a persistent "Get your membership" card, and the sheet returns on next launch while there is still no active plan
+- Home with an active/expiring membership shows the membership card (plan, Member ID + QR, validity, days left, due, status chip)
+- Package list loads from `GET /packages`; selecting a plan opens the summary, then the payment method screen
+- Payment method screen offers UPI / Card / Net Banking; Pay shows a "Coming Soon" dialog; "Request activation from gym" creates a pending `membership/renew` request
+- Membership tab shows details, fees & due amount, validity/expiry, pending-request notice, and past membership history
+- Payment history lists `GET /payments/history`; opening an item shows the receipt/invoice from `GET /receipts/{id}`
+- Admin: Packages CRUD, members list/search/view, Government ID approve/reject with reason, assign/renew membership, record offline payment (cash/UPI/card), printable receipt
+- Phase 1 flows still work (auth, onboarding, profile, portrait lock, no overflow)

@@ -6,10 +6,12 @@ $config = require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Controllers\AuthController;
 use App\Controllers\DeviceController;
+use App\Controllers\DietPlanController;
 use App\Controllers\MembershipController;
 use App\Controllers\PackageController;
 use App\Controllers\PaymentController;
 use App\Controllers\ProfileController;
+use App\Controllers\WorkoutPlanController;
 use App\Middleware\JwtAuth;
 use App\Services\OtpService;
 use App\Support\Cors;
@@ -45,7 +47,7 @@ try {
 if ($method === 'GET' && $path === '/health') {
     Json::ok('Raw Fitness API ready', [
         'app' => $config['app_name'],
-        'phase' => 2,
+        'phase' => 3,
         'time' => date('c'),
     ]);
 }
@@ -113,6 +115,22 @@ if ($method === 'POST' && $path === '/payments/initiate') {
 }
 if ($method === 'GET' && Http::match('/receipts/{id}', $path, $params)) {
     $payments->receipt((int) $params['id']);
+}
+
+$workoutPlans = new WorkoutPlanController($pdo, $config);
+$dietPlans = new DietPlanController($pdo, $config);
+
+if ($method === 'GET' && $path === '/workout-plans') {
+    $workoutPlans->index();
+}
+if ($method === 'GET' && Http::match('/workout-plans/{id}', $path, $params)) {
+    $workoutPlans->show((int) $params['id']);
+}
+if ($method === 'GET' && $path === '/diet-plans') {
+    $dietPlans->index();
+}
+if ($method === 'GET' && Http::match('/diet-plans/{id}', $path, $params)) {
+    $dietPlans->show((int) $params['id']);
 }
 
 Json::fail('Not found', 404);

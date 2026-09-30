@@ -10,12 +10,15 @@ $config = require dirname(__DIR__, 2) . '/backend/src/bootstrap.php';
 require dirname(__DIR__) . '/src/Csrf.php';
 require dirname(__DIR__) . '/src/Admin.php';
 
+use App\Repositories\DietPlanRepository;
 use App\Repositories\GovIdRepository;
 use App\Repositories\MembershipRepository;
 use App\Repositories\PackageRepository;
 use App\Repositories\PaymentRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\WorkoutPlanRepository;
 use App\Support\Database;
+use App\Support\Media;
 use App\Support\Schema;
 
 $rawPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -79,6 +82,77 @@ $view = dirname(__DIR__) . '/views/dashboard.php';
 
 if ($loggedIn && $pdo) {
     $stats = Admin::stats($pdo);
+
+    $parseWorkoutDays = static function (): array {
+        $input = $_POST['days'] ?? [];
+        $days = [];
+        if (!is_array($input)) {
+            return $days;
+        }
+        foreach ($input as $raw) {
+            if (!is_array($raw)) {
+                continue;
+            }
+            $title = trim((string) ($raw['title'] ?? ''));
+            $notes = trim((string) ($raw['notes'] ?? ''));
+            $exercises = [];
+            $rawExercises = $raw['exercises'] ?? [];
+            if (is_array($rawExercises)) {
+                foreach ($rawExercises as $ex) {
+                    if (!is_array($ex)) {
+                        continue;
+                    }
+                    $name = trim((string) ($ex['name'] ?? ''));
+                    if ($name === '') {
+                        continue;
+                    }
+                    $exercises[] = [
+                        'name' => $name,
+                        'sets' => trim((string) ($ex['sets'] ?? '')),
+                        'reps' => trim((string) ($ex['reps'] ?? '')),
+                        'rest' => trim((string) ($ex['rest'] ?? '')),
+                        'notes' => trim((string) ($ex['notes'] ?? '')),
+                        'image' => trim((string) ($ex['image'] ?? '')),
+                    ];
+                }
+            }
+            if ($title === '' && $exercises === []) {
+                continue;
+            }
+            $days[] = ['title' => $title, 'notes' => $notes, 'exercises' => $exercises];
+        }
+        return $days;
+    };
+
+    $parseDietMeals = static function (): array {
+        $input = $_POST['meals'] ?? [];
+        $meals = [];
+        if (!is_array($input)) {
+            return $meals;
+        }
+        foreach ($input as $raw) {
+            if (!is_array($raw)) {
+                continue;
+            }
+            $type = trim((string) ($raw['meal_type'] ?? ''));
+            $items = trim((string) ($raw['items'] ?? ''));
+            if ($type === '' && $items === '') {
+                continue;
+            }
+            $calories = ($raw['calories'] ?? '') !== '' && is_numeric($raw['calories'])
+                ? (int) $raw['calories']
+                : null;
+            $meals[] = [
+                'meal_type' => $type !== '' ? $type : 'Meal',
+                'items' => $items,
+                'calories' => $calories,
+                'time' => trim((string) ($raw['time'] ?? '')),
+            ];
+        }
+        return $meals;
+    };
+
+    $workoutLevels = ['beginner', 'intermediate', 'advanced', 'all'];
 
     // ---------- Members ----------
     if ($method === 'POST' && preg_match('#^/members/(\d+)/gov-id$#', $path, $params)) {
@@ -334,6 +408,230 @@ if ($loggedIn && $pdo) {
         $gymName = $config['app_name'];
         $title = 'Receipt ' . ($payment['receipt_no'] ?? '');
         $view = dirname(__DIR__) . '/views/receipt.php';
+    }
+
+    // ---------- Workout plans ----------
+    elseif ($method === 'POST' && preg_match('#^/workout-plans/(\d+)/(delete|toggle)$#', $path, $params)) {
+        if (!Csrf::check()) {
+            Admin::flash('danger', 'Invalid session. Try again.');
+            Admin::redirect($base . '/workout-plans');
+        }
+        $id = (int) $params[1];
+        $repo = new WorkoutPlanRepository($pdo);
+        if ($params[2] === 'delete') {
+            $repo->delete($id);
+            Admin::flash('success', 'Workout plan deleted.');
+        } else {
+            $plan = $repo->find($id);
+            $repo->setActive($id, (int) ($plan['is_active'] ?? 0) !== 1);
+            Admin::flash('success', 'Workout plan status updated.');
+        }
+        Admin::redirect($base . '/workout-plans');
+    } elseif ($method === 'POST' && preg_match('#^/workout-plans/(\d+)$#', $path, $params)) {
+        if (!Csrf::check()) {
+            Admin::flash('danger', 'Invalid session. Try again.');
+            Admin::redirect($base . '/workout-plans');
+        }
+        $id = (int) $params[1];
+        $repo = new WorkoutPlanRepository($pdo);
+        $existing = $repo->find($id);
+        if (!$existing) {
+            Admin::flash('danger', 'Workout plan not found.');
+            Admin::redirect($base . '/workout-plans');
+        }
+        $titleInput = trim((string) ($_POST['title'] ?? ''));
+        if ($titleInput === '') {
+            Admin::flash('danger', 'Plan title is required.');
+            Admin::redirect($base . '/workout-plans/' . $id . '/edit');
+        }
+        $image = $existing['image'] ?? null;
+        if (!empty($_POST['remove_image'])) {
+            $image = null;
+        }
+        $stored = Admin::storeImage($_FILES['image'] ?? [], 'workouts', $config);
+        if ($stored !== null) {
+            $image = $stored;
+        }
+        $category = trim((string) ($_POST['category'] ?? ''));
+        $repo->update($id, [
+            'title' => $titleInput,
+            'image' => $image,
+            'category' => $category !== '' ? $category : null,
+            'level' => in_array($_POST['level'] ?? '', $workoutLevels, true) ? (string) $_POST['level'] : 'all',
+            'description' => trim((string) ($_POST['description'] ?? '')),
+            'is_active' => (int) ($_POST['is_active'] ?? 0) === 1 ? 1 : 0,
+        ]);
+        $repo->replaceSchedule($id, $parseWorkoutDays());
+        Admin::flash('success', 'Workout plan updated.');
+        Admin::redirect($base . '/workout-plans');
+    } elseif ($method === 'POST' && $path === '/workout-plans') {
+        if (!Csrf::check()) {
+            Admin::flash('danger', 'Invalid session. Try again.');
+            Admin::redirect($base . '/workout-plans/new');
+        }
+        $titleInput = trim((string) ($_POST['title'] ?? ''));
+        if ($titleInput === '') {
+            Admin::flash('danger', 'Plan title is required.');
+            Admin::redirect($base . '/workout-plans/new');
+        }
+        $category = trim((string) ($_POST['category'] ?? ''));
+        $repo = new WorkoutPlanRepository($pdo);
+        $id = $repo->create([
+            'title' => $titleInput,
+            'image' => Admin::storeImage($_FILES['image'] ?? [], 'workouts', $config),
+            'category' => $category !== '' ? $category : null,
+            'level' => in_array($_POST['level'] ?? '', $workoutLevels, true) ? (string) $_POST['level'] : 'all',
+            'description' => trim((string) ($_POST['description'] ?? '')),
+            'is_active' => (int) ($_POST['is_active'] ?? 0) === 1 ? 1 : 0,
+        ]);
+        $repo->replaceSchedule($id, $parseWorkoutDays());
+        Admin::flash('success', 'Workout plan created.');
+        Admin::redirect($base . '/workout-plans');
+    } elseif ($method === 'GET' && preg_match('#^/workout-plans/(\d+)/edit$#', $path, $params)) {
+        $repo = new WorkoutPlanRepository($pdo);
+        $plan = $repo->find((int) $params[1]);
+        if (!$plan) {
+            Admin::flash('danger', 'Workout plan not found.');
+            Admin::redirect($base . '/workout-plans');
+        }
+        $days = $repo->schedule((int) $plan['id']);
+        $imageUrl = Media::url($plan['image'] ?? null, (string) $config['base_url']);
+        $title = 'Edit workout plan';
+        $view = dirname(__DIR__) . '/views/workout_plan_form.php';
+    } elseif ($method === 'GET' && $path === '/workout-plans/new') {
+        $plan = null;
+        $days = [];
+        $imageUrl = null;
+        $title = 'New workout plan';
+        $view = dirname(__DIR__) . '/views/workout_plan_form.php';
+    } elseif ($method === 'GET' && $path === '/workout-plans') {
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $perPage = 20;
+        $repo = new WorkoutPlanRepository($pdo);
+        $plans = $repo->all(false, null, $q !== '' ? $q : null, $perPage, ($page - 1) * $perPage);
+        $total = $repo->countAll(false, null, $q !== '' ? $q : null);
+        $search = $q;
+        $pageNo = $page;
+        $pageCount = max(1, (int) ceil($total / $perPage));
+        $planTotal = $total;
+        $title = 'Workout plans';
+        $view = dirname(__DIR__) . '/views/workout_plans.php';
+    }
+
+    // ---------- Diet plans ----------
+    elseif ($method === 'POST' && preg_match('#^/diet-plans/(\d+)/(delete|toggle)$#', $path, $params)) {
+        if (!Csrf::check()) {
+            Admin::flash('danger', 'Invalid session. Try again.');
+            Admin::redirect($base . '/diet-plans');
+        }
+        $id = (int) $params[1];
+        $repo = new DietPlanRepository($pdo);
+        if ($params[2] === 'delete') {
+            $repo->delete($id);
+            Admin::flash('success', 'Diet plan deleted.');
+        } else {
+            $plan = $repo->find($id);
+            $repo->setActive($id, (int) ($plan['is_active'] ?? 0) !== 1);
+            Admin::flash('success', 'Diet plan status updated.');
+        }
+        Admin::redirect($base . '/diet-plans');
+    } elseif ($method === 'POST' && preg_match('#^/diet-plans/(\d+)$#', $path, $params)) {
+        if (!Csrf::check()) {
+            Admin::flash('danger', 'Invalid session. Try again.');
+            Admin::redirect($base . '/diet-plans');
+        }
+        $id = (int) $params[1];
+        $repo = new DietPlanRepository($pdo);
+        $existing = $repo->find($id);
+        if (!$existing) {
+            Admin::flash('danger', 'Diet plan not found.');
+            Admin::redirect($base . '/diet-plans');
+        }
+        $titleInput = trim((string) ($_POST['title'] ?? ''));
+        if ($titleInput === '') {
+            Admin::flash('danger', 'Plan title is required.');
+            Admin::redirect($base . '/diet-plans/' . $id . '/edit');
+        }
+        $image = $existing['image'] ?? null;
+        if (!empty($_POST['remove_image'])) {
+            $image = null;
+        }
+        $stored = Admin::storeImage($_FILES['image'] ?? [], 'diets', $config);
+        if ($stored !== null) {
+            $image = $stored;
+        }
+        $category = trim((string) ($_POST['category'] ?? ''));
+        $calories = ($_POST['calories'] ?? '') !== '' && is_numeric($_POST['calories'])
+            ? (int) $_POST['calories']
+            : null;
+        $repo->update($id, [
+            'title' => $titleInput,
+            'image' => $image,
+            'category' => $category !== '' ? $category : null,
+            'calories' => $calories,
+            'description' => trim((string) ($_POST['description'] ?? '')),
+            'is_active' => (int) ($_POST['is_active'] ?? 0) === 1 ? 1 : 0,
+        ]);
+        $repo->replaceMeals($id, $parseDietMeals());
+        Admin::flash('success', 'Diet plan updated.');
+        Admin::redirect($base . '/diet-plans');
+    } elseif ($method === 'POST' && $path === '/diet-plans') {
+        if (!Csrf::check()) {
+            Admin::flash('danger', 'Invalid session. Try again.');
+            Admin::redirect($base . '/diet-plans/new');
+        }
+        $titleInput = trim((string) ($_POST['title'] ?? ''));
+        if ($titleInput === '') {
+            Admin::flash('danger', 'Plan title is required.');
+            Admin::redirect($base . '/diet-plans/new');
+        }
+        $category = trim((string) ($_POST['category'] ?? ''));
+        $calories = ($_POST['calories'] ?? '') !== '' && is_numeric($_POST['calories'])
+            ? (int) $_POST['calories']
+            : null;
+        $repo = new DietPlanRepository($pdo);
+        $id = $repo->create([
+            'title' => $titleInput,
+            'image' => Admin::storeImage($_FILES['image'] ?? [], 'diets', $config),
+            'category' => $category !== '' ? $category : null,
+            'calories' => $calories,
+            'description' => trim((string) ($_POST['description'] ?? '')),
+            'is_active' => (int) ($_POST['is_active'] ?? 0) === 1 ? 1 : 0,
+        ]);
+        $repo->replaceMeals($id, $parseDietMeals());
+        Admin::flash('success', 'Diet plan created.');
+        Admin::redirect($base . '/diet-plans');
+    } elseif ($method === 'GET' && preg_match('#^/diet-plans/(\d+)/edit$#', $path, $params)) {
+        $repo = new DietPlanRepository($pdo);
+        $plan = $repo->find((int) $params[1]);
+        if (!$plan) {
+            Admin::flash('danger', 'Diet plan not found.');
+            Admin::redirect($base . '/diet-plans');
+        }
+        $meals = $repo->mealsFor((int) $plan['id']);
+        $imageUrl = Media::url($plan['image'] ?? null, (string) $config['base_url']);
+        $title = 'Edit diet plan';
+        $view = dirname(__DIR__) . '/views/diet_plan_form.php';
+    } elseif ($method === 'GET' && $path === '/diet-plans/new') {
+        $plan = null;
+        $meals = [];
+        $imageUrl = null;
+        $title = 'New diet plan';
+        $view = dirname(__DIR__) . '/views/diet_plan_form.php';
+    } elseif ($method === 'GET' && $path === '/diet-plans') {
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $perPage = 20;
+        $repo = new DietPlanRepository($pdo);
+        $plans = $repo->all(false, null, $q !== '' ? $q : null, $perPage, ($page - 1) * $perPage);
+        $total = $repo->countAll(false, null, $q !== '' ? $q : null);
+        $search = $q;
+        $pageNo = $page;
+        $pageCount = max(1, (int) ceil($total / $perPage));
+        $planTotal = $total;
+        $title = 'Diet plans';
+        $view = dirname(__DIR__) . '/views/diet_plans.php';
     }
 }
 

@@ -170,6 +170,75 @@ final class Schema
             KEY idx_payments_membership (membership_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        $pdo->exec("CREATE TABLE IF NOT EXISTS workout_plans (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            title VARCHAR(160) NOT NULL,
+            image VARCHAR(255) DEFAULT NULL,
+            category VARCHAR(80) DEFAULT NULL,
+            level ENUM('beginner','intermediate','advanced','all') NOT NULL DEFAULT 'all',
+            description TEXT,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_workout_plans_active (is_active),
+            KEY idx_workout_plans_category (category)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS workout_days (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            plan_id INT UNSIGNED NOT NULL,
+            day_number INT UNSIGNED NOT NULL DEFAULT 1,
+            title VARCHAR(160) DEFAULT NULL,
+            notes VARCHAR(255) DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_workout_days_plan (plan_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS workout_exercises (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            day_id INT UNSIGNED NOT NULL,
+            name VARCHAR(160) NOT NULL,
+            sets VARCHAR(32) DEFAULT NULL,
+            reps VARCHAR(32) DEFAULT NULL,
+            rest VARCHAR(32) DEFAULT NULL,
+            notes VARCHAR(255) DEFAULT NULL,
+            image VARCHAR(255) DEFAULT NULL,
+            sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_workout_ex_day (day_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS diet_plans (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            title VARCHAR(160) NOT NULL,
+            image VARCHAR(255) DEFAULT NULL,
+            category VARCHAR(80) DEFAULT NULL,
+            calories INT UNSIGNED DEFAULT NULL,
+            description TEXT,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_diet_plans_active (is_active),
+            KEY idx_diet_plans_category (category)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS diet_meals (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            plan_id INT UNSIGNED NOT NULL,
+            meal_type VARCHAR(80) NOT NULL,
+            items TEXT,
+            calories INT UNSIGNED DEFAULT NULL,
+            meal_time VARCHAR(32) DEFAULT NULL,
+            sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_diet_meals_plan (plan_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
         $email = $config['admin']['seed_email'] ?? 'admin@rawfitness.local';
         $exists = $pdo->prepare('SELECT id FROM admin_users WHERE email = ? LIMIT 1');
         $exists->execute([$email]);
